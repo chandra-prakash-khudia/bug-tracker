@@ -130,10 +130,11 @@ pipeline {
                         reportDir: "${env.WORKSPACE}/tests-api/playwright-reports",
                         reportFiles: 'index.html',
                         reportName: 'Playwight API test Report'
-]
+                        ]
                 }
             }
         }
+    }
     }
     post{
         always{
