@@ -60,12 +60,24 @@ pipeline {
                     sh '''
                     npm ci 
                     npm test
+                    mkdir -p coverage
+                    mv coverage reports/
                     '''
                 }
             }
             post{
                 always{
                     junit 'bugtracker-frontend/test-results.xml'
+                    publishHTML target :[
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${env.WORKSPACE}/bugtracker-frontend/reports",
+                        reportFiles: 'index.html',
+                        reportName: 'frontend Coverage Report'
+
+                    ]
+
                 }
             }
         }
