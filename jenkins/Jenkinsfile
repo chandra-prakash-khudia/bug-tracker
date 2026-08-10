@@ -12,10 +12,11 @@ pipeline {
             environment{
                 HOME = "${WORKSPACE}"
                 GOCACHE="${WORKSPACE}/.cache/go-build"
+                GOMODCACHE = "${WORKSPACE}/.cache/go-mod"
                 GOTMPDIR = "${WORKSPACE}/.tmp"
             }
             steps {
-                sh 'mkdir -p "$GOCACHE","$GOTMPDIR"'
+                sh 'mkdir -p "$GOCACHE" "$GOMODCACHE" "$GOTMPDIR"'
                 dir('bugtracker-backend'){
                    sh 'go test -v ./...'
                 }
