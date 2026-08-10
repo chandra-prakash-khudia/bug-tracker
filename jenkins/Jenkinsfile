@@ -111,9 +111,24 @@ pipeline {
             }
             steps{
                 dir (test-api){
+                    sh 'set -e'
                     sh 'npx wait-port http://localhost:8080/api/health -t 30000'
                     sh 'npm ci'
                     sh 'npm playwright test'
+                }
+            }
+            post{
+                always{
+                    junit 'tests-api/test-results/results.xml'
+                    publishHTML target :[
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${env.WORKSPACE}/tests-api/playwright-reports",
+                        reportFiles: 'index.html',
+                        reportName: 'Playwight API test Report'
+
+                    ]
                 }
             }
         }
