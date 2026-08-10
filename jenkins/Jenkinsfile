@@ -114,7 +114,9 @@ pipeline {
                     sh 'set -e'
                     sh 'npx wait-port http://localhost:8080/api/health -t 30000'
                     sh 'npm ci'
-                    sh 'npx playwright test'
+                    sh 'npx playwright test --reporter=html'
+                    sh 'mkdir -p playwright-reports'
+                    sh 'cp -r playwright-reports/* playwright-reports/ 2>/dev/null || true'
                 }
             }
             post{
