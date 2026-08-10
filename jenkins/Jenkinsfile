@@ -24,7 +24,7 @@ pipeline {
                         go test -coverprofile=coverage.out -covermode=atomic ./...
                         go tool cover -html=coverage.out -o coverage.html 
                         mkdir -p reports
-                        mv coverge.html  reports/
+                        mv coverage.html  reports/
                     '''
                    
 
