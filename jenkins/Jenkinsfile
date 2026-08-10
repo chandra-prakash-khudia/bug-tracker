@@ -138,15 +138,22 @@ pipeline {
             steps{
                 dir('tests-e2e'){
                     sh '''
-                    set -e 
-                    npm ci
-                    npx playwright test
+                        set -e
+                        npx wait-port http://localhost:3000 -t 30000
+                        npm ci
+                        set +e
+                        npx playwright test
+                        test_status=$?
+                        set -e
+                        mkdir -p playwright-reports
+                        cp -r playwright-report/. playwright-reports/ 2>/dev/null || true
+                        exit $test_status
                     '''
                 }
             }
             post{
                 always{
-                    junit 'tests-e2e/test-results/results.xml',
+                    junit 'tests-e2e/test-results/results.xml'
                     publishHTML target: [
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
