@@ -177,14 +177,13 @@ pipeline {
             steps{
                 dir('tests-perf'){
                     sh '''
-                    set -e
-                    k6 run script.js
+                        set -e
+                        k6 run script.js
                     '''
                 }
             }
-            posts{
+            post{
                 always{
-                    // junit 'tests-e2e/test-results/results.xml'
                     publishHTML target: [
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
