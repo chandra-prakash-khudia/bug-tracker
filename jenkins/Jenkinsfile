@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     stages {
-        stage('Unit Tests - Backend') {
+        stage('Execute Unit Tests'){
+            parallel{
+            stage('Unit Tests - Backend') {
             agent{
                 docker {
                     image 'snakee/golang-junit:1.21'
@@ -58,6 +60,7 @@ pipeline {
             steps{
                 dir('bugtracker-frontend'){
                     sh '''
+                    set -e
                     npm ci 
                     npm test
                     mkdir -p coverage
@@ -80,6 +83,14 @@ pipeline {
 
                 }
             }
+        }
+
+            }
+        }
+    }
+    post{
+        always{
+            cleanWs()
         }
     }
 }
