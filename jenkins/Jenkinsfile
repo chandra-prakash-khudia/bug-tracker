@@ -9,7 +9,13 @@ pipeline {
                     reuseNode true
                 }
             }
+            environment{
+                HOME = "${WORKSPACE}"
+                GOCACHE="${WORKSPACE}/.cache/go-build"
+                GOTMPDIR = "${WORKSPACE}/.tmp"
+            }
             steps {
+                sh 'mkdir -p "$GOCACHE","$GOTMPDIR"'
                 dir('bugtracker-backend'){
                    sh 'go test -v ./...'
                 }
