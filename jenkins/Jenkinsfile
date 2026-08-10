@@ -2,115 +2,107 @@ pipeline {
     agent any
 
     stages {
-        stage('Execute Unit Tests'){
-            parallel{
-            stage('Unit Tests - Backend') {
-            agent{
+        stage('Execute Unit Tests') {
+            parallel {
+                stage('Unit Tests - Backend') {
+                    agent {
+                        docker {
+                            image 'snakee/golang-junit:1.21'
+                            reuseNode true
+                        }
+                    }
+                    environment {
+                        HOME = "${WORKSPACE}"
+                        GOCACHE = "${WORKSPACE}/.cache/go-build"
+                        GOMODCACHE = "${WORKSPACE}/.cache/go-mod"
+                        GOTMPDIR = "${WORKSPACE}/.tmp"
+                    }
+                    steps {
+                        sh 'mkdir -p "$GOCACHE" "$GOMODCACHE" "$GOTMPDIR"'
+                        dir('bugtracker-backend') {
+                            sh '''
+                                set -e
+                                go test -v ./... 2>&1 | go-junit-report > test-results.xml
+                                go test -coverprofile=coverage.out -covermode=atomic ./...
+                                go tool cover -html=coverage.out -o coverage.html
+                                mkdir -p reports
+                                mv coverage.html reports/
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'bugtracker-backend/test-results.xml'
+                            publishHTML target: [
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: "${env.WORKSPACE}/bugtracker-backend/reports",
+                                reportFiles: 'coverage.html',
+                                reportName: 'Backend Coverage Report'
+                            ]
+                        }
+                    }
+                }
+
+                stage('Unit Tests - Frontend') {
+                    agent {
+                        docker {
+                            image 'node:20-alpine'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('bugtracker-frontend') {
+                            sh '''
+                                set -e
+                                npm ci
+                                npm test
+                                mkdir -p reports
+                                cp -r coverage/. reports/
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'bugtracker-frontend/test-results.xml'
+                            publishHTML target: [
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: "${env.WORKSPACE}/bugtracker-frontend/reports",
+                                reportFiles: 'index.html',
+                                reportName: 'Frontend Coverage Report'
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Launch Application') {
+            agent {
                 docker {
-                    image 'snakee/golang-junit:1.21'
-                    reuseNode true
-                }
-            }
-            environment{
-                HOME = "${WORKSPACE}"
-                GOCACHE="${WORKSPACE}/.cache/go-build"
-                GOMODCACHE = "${WORKSPACE}/.cache/go-mod"
-                GOTMPDIR = "${WORKSPACE}/.tmp"
-            }
-            steps {
-                sh 'mkdir -p "$GOCACHE" "$GOMODCACHE" "$GOTMPDIR"'
-                dir('bugtracker-backend'){
-                    sh '''
-                        set -e
-                        go test -v ./... 2>&1 | go-junit-report > test-results.xml
-                        # Generate Coverage report
-                        go test -coverprofile=coverage.out -covermode=atomic ./...
-                        go tool cover -html=coverage.out -o coverage.html 
-                        mkdir -p reports
-                        mv coverage.html  reports/
-                        pwd
-                        find . -maxdepth 3 -name 'coverage.html'
-                    '''
-                   
-
-                }
-            }
-            post{
-                always{
-                    junit 'bugtracker-backend/test-results.xml'
-                    publishHTML target :[
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: "${env.WORKSPACE}/bugtracker-backend/reports",
-                        reportFiles: 'coverage.html',
-                        reportName: 'Backend Coverage Report'
-
-                    ]
-                }
-            }
-        }
-        stage('Unit Tests - Frontend'){
-            agent{ 
-                docker{
-                    image 'node:20-alpine'
-                    reuseNode true
-                }
-            }
-            steps{
-                dir('bugtracker-frontend'){
-                    sh '''
-                    set -e
-                    npm ci 
-                    npm test
-                    mkdir -p coverage
-                    mv coverage reports/
-                    '''
-                }
-            }
-            post{
-                always{
-                    junit 'bugtracker-frontend/test-results.xml'
-                    publishHTML target :[
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: "${env.WORKSPACE}/bugtracker-frontend/reports",
-                        reportFiles: 'index.html',
-                        reportName: 'frontend Coverage Report'
-
-                    ]
-
-                }
-            }
-        }
-
-            }
-        }
-        stage('Launch Application')
-        {
-            agent{
-                docker{
                     image 'docker:27.5.1'
                     reuseNode true
-                    args '-v/var/run/docker.sock:/var/run/docker.sock -u 0'
-
+                    args '-v /var/run/docker.sock:/var/run/docker.sock -u 0'
                 }
             }
-            steps{
+            steps {
                 sh 'docker compose up --build -d'
             }
-        } 
-        stage('API Test'){
+        }
+
+        stage('API Test') {
             agent {
-                docker{
+                docker {
                     image 'mcr.microsoft.com/playwright:v1.50.0-jammy'
                     reuseNode true
                     args '-u 0 --network=host'
                 }
             }
-            steps{
-                dir ('tests-api'){
+            steps {
+                dir('tests-api') {
                     sh '''
                         set -e
                         npx wait-port http://localhost:8080/api/health -t 30000
@@ -119,9 +111,10 @@ pipeline {
                         mkdir -p playwright-reports
                         cp -r playwright-report/. playwright-reports/ 2>/dev/null || true
                     '''
+                }
             }
-            post{
-                always{
+            post {
+                always {
                     junit 'tests-api/test-results/results.xml'
                     publishHTML target: [
                         allowMissing: false,
@@ -129,16 +122,16 @@ pipeline {
                         keepAll: true,
                         reportDir: "${env.WORKSPACE}/tests-api/playwright-reports",
                         reportFiles: 'index.html',
-                        reportName: 'Playwight API test Report'
-                        ]
+                        reportName: 'Playwright API Test Report'
+                    ]
                 }
             }
         }
     }
-    }
-    post{
-        always{
-            cleanWs()
+
+    post {
+        always {
+            deleteDir()
         }
     }
 }
